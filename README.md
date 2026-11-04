@@ -109,5 +109,5 @@ están en [RESPUESTAS.md](RESPUESTAS.md).
 
 ## Autor
 
-- Nombre: _________________________ · Código: ______________
+- Nombre: Benjamin Jorge Chuquimia Arroyo · Código: 250273
 - Docente: Dr. Aldo Hernán Zanabria Gálvez
