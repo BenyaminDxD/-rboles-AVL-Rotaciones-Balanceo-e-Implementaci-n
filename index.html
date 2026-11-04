@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratorio AVL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: banco de laboratorio — árbol grande a la izquierda, "osciloscopio" de código + pila a la derecha */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --sunk:#F5F7F9; --ink:#15202B; --muted:#5A6774; --line:#D3DAE2;
+  --accent:#0E6A87; --accent-soft:#DCEEF4; --warn:#C2410C; --warn-soft:#FBE7DC; --ok:#25804F; --ok-soft:#DDF2E5;
+  --violet:#6A47D6; --violet-soft:#ECE6FD; --amber:#A86A00; --amber-soft:#FFF1D1;
+  --code-bg:#F7F9FB; --code-hl:#FFF1C9; --code-hl-bar:#D49A00;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1318; --surface:#141C23; --sunk:#10171D; --ink:#E3E9EF; --muted:#92A0AD; --line:#26323D;
+  --accent:#4DB3D3; --accent-soft:#12303B; --warn:#F2895A; --warn-soft:#3A2016; --ok:#5CC68B; --ok-soft:#14301F;
+  --violet:#A58EF2; --violet-soft:#2A2247; --amber:#E2B445; --amber-soft:#3A2E10;
+  --code-bg:#10171D; --code-hl:#3A3112; --code-hl-bar:#E2B445; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1318; --surface:#141C23; --sunk:#10171D; --ink:#E3E9EF; --muted:#92A0AD; --line:#26323D;
+  --accent:#4DB3D3; --accent-soft:#12303B; --warn:#F2895A; --warn-soft:#3A2016; --ok:#5CC68B; --ok-soft:#14301F;
+  --violet:#A58EF2; --violet-soft:#2A2247; --amber:#E2B445; --amber-soft:#3A2E10;
+  --code-bg:#10171D; --code-hl:#3A3112; --code-hl-bar:#E2B445; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+.wrap{max-width:1360px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding:20px 0 14px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.brand .eq{font-family:var(--f-mono);font-size:13px;color:var(--accent)}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+nav.tabs button{border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:500;font-size:14px}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.lbl{font-family:var(--f-display);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- visualizador ---------- */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+.ops{padding:14px;display:flex;flex-direction:column;gap:12px}
+.oprow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.oprow input[type=text]{flex:1 1 180px;min-width:0;border:1px solid var(--line);background:var(--sunk);border-radius:6px;padding:8px 10px;font-family:var(--f-mono)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:8px 12px;cursor:pointer;font-weight:500;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;font-family:var(--f-mono)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+.stage{position:relative;overflow:hidden}
+.stage svg{display:block;width:100%;height:440px}
+@media (max-width:600px){.stage svg{height:340px}}
+.stagebar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+.status{font-family:var(--f-mono);font-size:13px;padding:3px 9px;border-radius:999px}
+.status.ok{background:var(--ok-soft);color:var(--ok)}
+.status.bad{background:var(--warn-soft);color:var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:50%;border:2.5px solid;display:inline-block}
+
+/* svg nodes */
+.edge{stroke:var(--muted);stroke-width:1.6;opacity:.7}
+.nd circle{fill:var(--surface);stroke:var(--ink);stroke-width:1.6}
+.nd .k{font:600 13px var(--f-mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.nd .hh{font:500 10.5px var(--f-mono);fill:var(--muted);text-anchor:middle}
+.nd .fbb rect{fill:var(--sunk);stroke:var(--line)}
+.nd .fbb text{font:600 10px var(--f-mono);fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+.nd.fb1 .fbb rect{fill:var(--accent-soft);stroke:var(--accent)} .nd.fb1 .fbb text{fill:var(--accent)}
+.nd.fb2 .fbb rect{fill:var(--warn);stroke:var(--warn)} .nd.fb2 .fbb text{fill:var(--surface)}
+.nd.fb2 circle{stroke:var(--warn);stroke-dasharray:4 3}
+.nd .tag{font:700 10.5px var(--f-display);text-anchor:middle;letter-spacing:.06em;text-transform:uppercase}
+.nd.r-actual circle{stroke:var(--amber);stroke-width:3.5;fill:var(--amber-soft)} .nd.r-actual .tag{fill:var(--amber)}
+.nd.r-nuevo circle{stroke:var(--ok);stroke-width:3.5;fill:var(--ok-soft)} .nd.r-nuevo .tag{fill:var(--ok)}
+.nd.r-encontrado circle{stroke:var(--ok);stroke-width:3.5;fill:var(--ok-soft)} .nd.r-encontrado .tag{fill:var(--ok)}
+.nd.r-visitado circle{stroke:var(--ok);stroke-width:2;fill:var(--ok-soft)}
+.nd.r-z circle{stroke:var(--warn);stroke-width:3.5;fill:var(--warn-soft)} .nd.r-z .tag{fill:var(--warn)}
+.nd.r-y circle{stroke:var(--violet);stroke-width:3.5;fill:var(--violet-soft)} .nd.r-y .tag{fill:var(--violet)}
+.nd.r-t circle{stroke:var(--accent);stroke-width:3;fill:var(--accent-soft)} .nd.r-t .tag{fill:var(--accent)}
+.nd.r-suc circle{stroke:var(--violet);stroke-width:3.5;fill:var(--violet-soft)} .nd.r-suc .tag{fill:var(--violet)}
+.nd.r-borrar circle{stroke:var(--warn);stroke-width:3.5;fill:var(--warn-soft)} .nd.r-borrar .tag{fill:var(--warn)}
+.empty-msg{font:500 14px var(--f-body);fill:var(--muted);text-anchor:middle}
+
+.player{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.pctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pctl .btn{padding:7px 11px;font-family:var(--f-mono)}
+.pctl .count{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.speed{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted)}
+.speed input{width:110px;accent-color:var(--accent)}
+.msg{background:var(--sunk);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:6px;padding:10px 12px;min-height:52px;font-size:15px}
+.msg b{font-weight:600}
+.msg .k{font-family:var(--f-mono);font-weight:600}
+.opname{font-family:var(--f-mono);font-size:13px;color:var(--accent)}
+.queue{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+
+/* code panel */
+.codep{display:flex;flex-direction:column;min-width:0}
+.codehead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.codehead .fname{font-family:var(--f-mono);font-size:13.5px;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 11px;cursor:pointer;font-size:13px;font-family:var(--f-mono)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.code{margin:0;background:var(--code-bg);font:12.8px/1.65 var(--f-mono);overflow-x:auto;padding:8px 0;counter-reset:ln}
+.code .ln{display:block;white-space:pre;padding:0 14px 0 10px;border-left:3px solid transparent}
+.code .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.2em;color:var(--muted);opacity:.6;text-align:right;margin-right:12px}
+.code .ln.hl{background:var(--code-hl);border-left-color:var(--code-hl-bar)}
+.code .kw{color:var(--accent);font-weight:600}
+.code .cm{color:var(--muted);font-style:italic}
+.stack{padding:10px 14px 12px;border-top:1px solid var(--line)}
+.stack ol{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column-reverse;gap:3px}
+.stack li{font-family:var(--f-mono);font-size:12.5px;padding:3px 8px;border-radius:4px;background:var(--sunk);border:1px solid var(--line)}
+.stack li:last-child{background:var(--amber-soft);border-color:var(--amber);color:var(--ink)}
+.stack .none{font-size:13px;color:var(--muted);margin-top:4px}
+
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.stat{background:var(--surface);padding:10px 12px}
+.stat .v{font:600 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.stat .d{font-size:12px;color:var(--muted)}
+.rots{padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;font-family:var(--f-mono);font-size:13px}
+.rots span{border:1px solid var(--line);border-radius:4px;padding:2px 8px;background:var(--sunk)}
+.inord{padding:0 14px 12px;font-family:var(--f-mono);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.inord b{color:var(--ok)}
+
+.log{max-height:240px;overflow:auto;padding:6px 0}
+.log button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:5px 14px;font-size:13px;cursor:pointer;color:var(--muted);border-left:3px solid transparent}
+.log button:hover{background:var(--sunk)}
+.log button.cur{color:var(--ink);background:var(--accent-soft);border-left-color:var(--accent)}
+.log button .n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;display:inline-block;width:2.4em;opacity:.7}
+
+/* ---------- comparación ---------- */
+.cmp{margin-top:16px;display:flex;flex-direction:column;gap:16px}
+.cmpgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:800px){.cmpgrid{grid-template-columns:minmax(0,1fr)}}
+.cmpcard{padding:0;overflow:hidden}
+.cmpcard .hd{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px;border-bottom:1px solid var(--line);gap:8px;flex-wrap:wrap}
+.cmpcard h3{font-size:18px}
+.big{font:600 26px var(--f-mono)}
+.big small{font-size:13px;color:var(--muted);font-weight:500}
+.cmpcard svg{display:block;width:100%;height:380px;background:var(--sunk)}
+.intro{padding:14px;display:flex;flex-direction:column;gap:10px}
+.intro p{margin:0;max-width:75ch}
+
+/* ---------- experimento ---------- */
+.exp{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px}
+@media (max-width:900px){.exp{grid-template-columns:minmax(0,1fr)}}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--f-display);font-weight:600;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+td:first-child,th:first-child{text-align:left}
+td.bad{color:var(--warn);font-weight:600}
+td.good{color:var(--ok);font-weight:600}
+.chart svg{display:block;width:100%;height:auto}
+.ax{stroke:var(--line)} .axl{fill:var(--muted);font:11px var(--f-mono)} .axt{fill:var(--muted);font:12px var(--f-body)}
+.pad{padding:14px}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+<header class="top">
+  <div class="brand">
+    <h1>Laboratorio AVL</h1>
+    <p>SIS210 · Semana 10 — mira cómo <span class="eq">insertar_avl</span>, <span class="eq">balancear</span> y las rotaciones transforman el árbol, línea por línea.</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-lab" aria-selected="true" data-v="lab">Visualizador paso a paso</button>
+    <button role="tab" id="tab-cmp" aria-selected="false" data-v="cmp">BST vs AVL</button>
+    <button role="tab" id="tab-exp" aria-selected="false" data-v="exp">Experimento 2B</button>
+  </nav>
+</header>
+
+<!-- ===================== VISUALIZADOR ===================== -->
+<section id="v-lab">
+<div class="lab">
+  <div class="col">
+    <div class="panel ops">
+      <div class="oprow">
+        <input type="text" id="key" placeholder="Clave o lista: 25  ó  10, 20, 30" aria-label="Clave" autocomplete="off">
+        <button class="btn pri" id="b-ins">Insertar</button>
+        <button class="btn" id="b-del">Eliminar</button>
+        <button class="btn" id="b-bus">Buscar</button>
+        <button class="btn" id="b-ino">Recorrer inorden</button>
+        <button class="btn ghost" id="b-clr">Vaciar árbol</button>
+      </div>
+      <div class="presets" aria-label="Casos de la práctica">
+        <button class="chip" data-p="P1">P1 · RR (10,20,30)</button>
+        <button class="chip" data-p="P2">P2 · LR (30,10,20)</button>
+        <button class="chip" data-p="LL">LL (30,20,10)</button>
+        <button class="chip" data-p="RL">RL (10,30,20)</button>
+        <button class="chip" data-p="P3">P3 · 1..15</button>
+        <button class="chip" data-p="P4">P4 · borrar hoja</button>
+        <button class="chip" data-p="P5">P5 · borrar raíz</button>
+        <button class="chip" data-p="P6">P6 · 1..7, borrar 1</button>
+        <button class="chip" data-p="SIGA">SIGA · 10 códigos</button>
+        <button class="chip" data-p="RND">Aleatorio (12)</button>
+      </div>
+      <p class="hint">Los casos de la práctica empiezan con el árbol vacío. Puedes escribir varias claves separadas por comas y se insertan una tras otra.</p>
+    </div>
+
+    <div class="panel stage">
+      <div class="stagebar">
+        <span class="opname" id="opname">—</span>
+        <span class="status ok" id="valid">AVL válido</span>
+      </div>
+      <svg id="svg" role="img" aria-label="Árbol AVL">
+        <g id="edges"></g><g id="nodes"></g><text id="emptymsg" class="empty-msg" x="0" y="0" style="display:none">Árbol vacío — inserta una clave</text>
+      </svg>
+      <div class="legend">
+        <span><i style="border-color:var(--amber)"></i>nodo actual</span>
+        <span><i style="border-color:var(--warn)"></i>z (desbalanceado)</span>
+        <span><i style="border-color:var(--violet)"></i>y (sube) / sucesor</span>
+        <span><i style="border-color:var(--accent)"></i>T (subárbol que cambia de padre)</span>
+        <span><i style="border-color:var(--ok)"></i>nuevo / encontrado</span>
+        <span>arriba-derecha: <b>fb</b> · abajo: <b>h</b></span>
+      </div>
+    </div>
+
+    <div class="panel player">
+      <div class="pctl">
+        <button class="btn" id="p-first" title="Inicio de la operación">|◀</button>
+        <button class="btn" id="p-prev" title="Paso anterior">◀</button>
+        <button class="btn pri" id="p-play" title="Reproducir / pausar">❚❚ Pausa</button>
+        <button class="btn" id="p-next" title="Paso siguiente">▶</button>
+        <button class="btn" id="p-end" title="Terminar todas las operaciones">▶▶|</button>
+        <span class="count" id="count">0 / 0</span>
+        <label class="speed" for="speed">Velocidad <input type="range" id="speed" min="1" max="5" value="3"></label>
+      </div>
+      <div class="msg" id="msg">Cargando…</div>
+      <div class="queue" id="queue"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel codep">
+      <div class="codehead">
+        <span class="fname" id="fname">—</span>
+        <div class="seg" role="group" aria-label="Lenguaje">
+          <button id="lang-cpp" aria-pressed="true">C++</button>
+          <button id="lang-py" aria-pressed="false">Python</button>
+        </div>
+      </div>
+      <pre class="code" id="code"></pre>
+      <div class="stack">
+        <div class="lbl">Pila de llamadas (la de arriba se está ejecutando)</div>
+        <ol id="stack"></ol>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="panel">
+      <div class="rots" id="rots"></div>
+      <div class="inord" id="inord"></div>
+    </div>
+
+    <div class="panel">
+      <div class="lbl" style="padding:10px 14px 0">Pasos de la operación actual</div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===================== BST vs AVL ===================== -->
+<section id="v-cmp" hidden>
+<div class="cmp">
+  <div class="panel intro">
+    <p>Inserta la <b>misma secuencia</b> en un BST simple (sin balanceo) y en un AVL. Con claves ordenadas el BST se vuelve una lista: su altura es igual al número de nodos. El AVL se mantiene en altura logarítmica.</p>
+    <div class="oprow">
+      <input type="text" id="seq" value="1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15" aria-label="Secuencia de claves">
+      <button class="btn pri" id="c-go">Comparar</button>
+    </div>
+    <div class="presets">
+      <button class="chip" data-s="ord">Ordenada 1..15</button>
+      <button class="chip" data-s="ord31">Ordenada 1..31</button>
+      <button class="chip" data-s="rnd">Aleatoria 20</button>
+      <button class="chip" data-s="desc">Descendente 15..1</button>
+      <button class="chip" data-s="zz">Zig-zag 1,15,2,14…</button>
+    </div>
+  </div>
+  <div class="cmpgrid">
+    <div class="panel cmpcard">
+      <div class="hd"><h3>BST simple</h3><span class="big" id="c-bst-h"></span></div>
+      <svg id="c-bst" role="img" aria-label="BST simple"></svg>
+    </div>
+    <div class="panel cmpcard">
+      <div class="hd"><h3>AVL</h3><span class="big" id="c-avl-h"></span></div>
+      <svg id="c-avl" role="img" aria-label="AVL"></svg>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===================== EXPERIMENTO ===================== -->
+<section id="v-exp" hidden>
+<div class="exp">
+  <div class="panel">
+    <div class="pad" style="display:flex;flex-direction:column;gap:10px">
+      <h2 style="font-size:20px">Altura con n claves (Actividad 2B)</h2>
+      <p class="note" style="margin:0">Se ejecuta aquí mismo en tu navegador, con la misma lógica que <span class="eq" style="font-family:var(--f-mono)">avl_python.py experimento</span>. Las columnas aleatorias pueden variar ±1–2 respecto a Python porque el generador aleatorio es otro.</p>
+      <div class="oprow"><button class="btn pri" id="e-go">Ejecutar de nuevo (otra semilla)</button><span class="note" id="e-info"></span></div>
+    </div>
+    <div class="tablewrap"><table id="e-tab"></table></div>
+    <div class="pad note" id="e-note"></div>
+  </div>
+  <div class="panel chart pad">
+    <div class="lbl" style="margin-bottom:6px">Altura vs n (escala logarítmica en ambos ejes)</div>
+    <svg id="e-chart" viewBox="0 0 640 400" role="img" aria-label="Gráfico de alturas"></svg>
+  </div>
+</div>
+</section>
+</div>
+
+<script>
+"use strict";
+// =====================================================================
+//  Modelo AVL con grabación de pasos (equivalente a avl.h)
+// =====================================================================
+let UID = 0;
+class Nodo { constructor(k){ this.id = ++UID; this.k = k; this.h = 1; this.l = null; this.r = null; } }
+const H  = n => n ? n.h : 0;
+const FB = n => n ? H(n.r) - H(n.l) : 0;
+const upd = n => { n.h = 1 + Math.max(H(n.l), H(n.r)); };
+const fmt = k => (k >= 100000 ? "…" + String(k).slice(-3) : String(k));
+const sg = v => (v > 0 ? "+" + v : String(v));
+const K = k => `<span class="k">${fmt(k)}</span>`;
+
+const T = { root: null };
+const rootSlot = { get: () => T.root, set: v => { T.root = v; } };
+const L = n => ({ get: () => n.l, set: v => { n.l = v; } });
+const R = n => ({ get: () => n.r, set: v => { n.r = v; } });
+const clone = n => n ? { id: n.id, k: n.k, h: n.h, l: clone(n.l), r: clone(n.r) } : null;
+
+const CNT = { LL: 0, RR: 0, LR: 0, RL: 0, simples: 0 };
+let STEPS = [], STACK = [], OPROT = 0, OPT = "";
+const NOTA = () => OPT === "ins" ? " <i>Es el primer nodo desbalanceado al subir desde el nodo nuevo; si sus ancestros también marcan |fb| = 2, se arreglan solos, porque tras la rotación este subárbol recupera la altura que tenía antes de insertar.</i>" : "";
+function rec(fn, lines, msg, hl = {}, extra = {}) {
+  STEPS.push({ snap: clone(T.root), fn, lines, msg, hl, stack: STACK.slice(), cnt: { ...CNT }, ...extra });
+}
+
+// ---------- rotaciones ----------
+function rotarDer(slot) {
+  const z = slot.get(), y = z.l, t = y.r;
+  STACK.push(`rotar_derecha(${fmt(z.k)})`);
+  const hl = { [z.id]: "z", [y.id]: "y" }; if (t) hl[t.id] = "t";
+  rec("rd", ["rd1", "rd2"], `<b>rotar_derecha(${K(z.k)})</b>: y = ${K(y.k)} va a subir. ` +
+      (t ? `Su hijo derecho ${K(t.k)} (T) pasará a ser hijo <b>izquierdo</b> de ${K(z.k)}.` : `y no tiene hijo derecho (T vacío).`), hl);
+  z.l = t; upd(z); y.r = z; upd(y); slot.set(y);
+  CNT.simples++; OPROT++;
+  rec("rd", ["rd3", "rd4", "rd5", "rd6"], `Rotación hecha: ${K(y.k)} es la nueva raíz del subárbol y ${K(z.k)} bajó a su derecha. Se actualizan las alturas: primero ${K(z.k)} (h=${z.h}), luego ${K(y.k)} (h=${y.h}).`, hl);
+  STACK.pop();
+}
+function rotarIzq(slot) {
+  const z = slot.get(), y = z.r, t = y.l;
+  STACK.push(`rotar_izquierda(${fmt(z.k)})`);
+  const hl = { [z.id]: "z", [y.id]: "y" }; if (t) hl[t.id] = "t";
+  rec("ri", ["ri1", "ri2"], `<b>rotar_izquierda(${K(z.k)})</b>: y = ${K(y.k)} va a subir. ` +
+      (t ? `Su hijo izquierdo ${K(t.k)} (T) pasará a ser hijo <b>derecho</b> de ${K(z.k)}.` : `y no tiene hijo izquierdo (T vacío).`), hl);
+  z.r = t; upd(z); y.l = z; upd(y); slot.set(y);
+  CNT.simples++; OPROT++;
+  rec("ri", ["ri3", "ri4", "ri5", "ri6"], `Rotación hecha: ${K(y.k)} es la nueva raíz del subárbol y ${K(z.k)} bajó a su izquierda. Alturas: ${K(z.k)} h=${z.h}, ${K(y.k)} h=${y.h}.`, hl);
+  STACK.pop();
+}
+
+// ---------- balancear ----------
+function balancear(slot) {
+  const n = slot.get();
+  STACK.push(`balancear(${fmt(n.k)})`);
+  upd(n); const fb = FB(n);
+  if (fb < -1) {
+    const c = n.l, fc = FB(c);
+    if (fc > 0) {
+      rec("bal", ["bal_h", "bal_fb", "bal_left", "bal_lr"], `Nodo ${K(n.k)}: h=${n.h}, <b>fb=${fb}</b> → pesado a la izquierda. Su hijo izquierdo ${K(c.k)} tiene fb=${sg(fc)} (signo opuesto, zig-zag) → <b>caso LR</b>: primero rotar a la izquierda en ${K(c.k)}, luego a la derecha en ${K(n.k)}.` + NOTA(), { [n.id]: "z", [c.id]: "y" });
+      CNT.LR++;
+      rec("bal", ["bal_lr_rot"], `Paso 1 del caso LR: <b>rotar_izquierda(n->izq)</b> sobre ${K(c.k)} para convertirlo en un caso LL.`, { [n.id]: "z", [c.id]: "y" });
+      rotarIzq(L(n));
+      rec("bal", ["bal_ll_rot"], `Paso 2 del caso LR: ahora es un caso LL → <b>rotar_derecha(n)</b> sobre ${K(n.k)}.`, { [n.id]: "z", [n.l.id]: "y" });
+      rotarDer(slot);
+    } else {
+      rec("bal", ["bal_h", "bal_fb", "bal_left", "bal_ll_rot"], `Nodo ${K(n.k)}: h=${n.h}, <b>fb=${fb}</b> → pesado a la izquierda. Su hijo izquierdo ${K(c.k)} tiene fb=${sg(fc)} (misma dirección) → <b>caso LL</b>: una rotación simple a la derecha.` + NOTA(), { [n.id]: "z", [c.id]: "y" });
+      CNT.LL++;
+      rotarDer(slot);
+    }
+  } else if (fb > 1) {
+    const c = n.r, fc = FB(c);
+    if (fc < 0) {
+      rec("bal", ["bal_h", "bal_fb", "bal_right", "bal_rl"], `Nodo ${K(n.k)}: h=${n.h}, <b>fb=${sg(fb)}</b> → pesado a la derecha. Su hijo derecho ${K(c.k)} tiene fb=${fc} (signo opuesto, zig-zag) → <b>caso RL</b>: primero rotar a la derecha en ${K(c.k)}, luego a la izquierda en ${K(n.k)}.` + NOTA(), { [n.id]: "z", [c.id]: "y" });
+      CNT.RL++;
+      rec("bal", ["bal_rl_rot"], `Paso 1 del caso RL: <b>rotar_derecha(n->der)</b> sobre ${K(c.k)} para convertirlo en un caso RR.`, { [n.id]: "z", [c.id]: "y" });
+      rotarDer(R(n));
+      rec("bal", ["bal_rr_rot"], `Paso 2 del caso RL: ahora es un caso RR → <b>rotar_izquierda(n)</b> sobre ${K(n.k)}.`, { [n.id]: "z", [n.r.id]: "y" });
+      rotarIzq(slot);
+    } else {
+      rec("bal", ["bal_h", "bal_fb", "bal_right", "bal_rr_rot"], `Nodo ${K(n.k)}: h=${n.h}, <b>fb=${sg(fb)}</b> → pesado a la derecha. Su hijo derecho ${K(c.k)} tiene fb=${sg(fc)} (misma dirección) → <b>caso RR</b>: una rotación simple a la izquierda.` + NOTA(), { [n.id]: "z", [c.id]: "y" });
+      CNT.RR++;
+      rotarIzq(slot);
+    }
+  } else {
+    rec("bal", ["bal_h", "bal_fb", "bal_ok"], `Al volver de la recursión: nodo ${K(n.k)} → h=${n.h}, fb=${sg(fb)}. Como |fb| ≤ 1, <b>está balanceado</b>; no se rota.`, { [n.id]: "actual" });
+  }
+  STACK.pop();
+}
+
+// ---------- insertar ----------
+function insertar(slot, k) {
+  const n = slot.get();
+  STACK.push(`insertar_avl(${n ? fmt(n.k) : "∅"}, ${fmt(k)})`);
+  if (!n) {
+    const nn = new Nodo(k); slot.set(nn);
+    rec("ins", ["ins_null", "ins_new"], `Se llegó a un lugar vacío: se crea el nodo ${K(k)} con h=1. Ahora la recursión regresa y <b>balancear</b> revisa cada ancestro.`, { [nn.id]: "nuevo" });
+    STACK.pop(); return;
+  }
+  if (k < n.k) {
+    rec("ins", ["ins_lt", "ins_goleft"], `Comparar: ${K(k)} &lt; ${K(n.k)} → bajar al subárbol <b>izquierdo</b>.`, { [n.id]: "actual" });
+    insertar(L(n), k);
+  } else if (k > n.k) {
+    rec("ins", ["ins_gt", "ins_goright"], `Comparar: ${K(k)} &gt; ${K(n.k)} → bajar al subárbol <b>derecho</b>.`, { [n.id]: "actual" });
+    insertar(R(n), k);
+  } else {
+    rec("ins", ["ins_dup"], `La clave ${K(k)} ya existe: solo se actualiza su valor (no se duplica).`, { [n.id]: "encontrado" });
+    STACK.pop(); return;
+  }
+  rec("ins", ["ins_bal"], `Regresó la llamada recursiva al nodo ${K(n.k)} → se llama a <b>balancear(raiz)</b>.`, { [n.id]: "actual" });
+  balancear(slot);
+  STACK.pop();
+}
+
+// ---------- eliminar ----------
+let NOTFOUND = false;
+function eliminar(slot, k) {
+  const n = slot.get();
+  STACK.push(`eliminar_avl(${n ? fmt(n.k) : "∅"}, ${fmt(k)})`);
+  if (!n) { rec("del", ["del_null"], `Se llegó a un hijo vacío: la clave ${K(k)} <b>no existe</b> en el árbol.`); NOTFOUND = true; STACK.pop(); return; }
+  if (k < n.k) {
+    rec("del", ["del_lt"], `Comparar: ${K(k)} &lt; ${K(n.k)} → buscar en el subárbol izquierdo.`, { [n.id]: "actual" });
+    eliminar(L(n), k);
+  } else if (k > n.k) {
+    rec("del", ["del_gt"], `Comparar: ${K(k)} &gt; ${K(n.k)} → buscar en el subárbol derecho.`, { [n.id]: "actual" });
+    eliminar(R(n), k);
+  } else if (!n.l && !n.r) {
+    rec("del", ["del_found", "del_leaf"], `Encontrado ${K(n.k)}. <b>Caso 1: es una hoja</b> → raiz = nullptr (se libera el nodo).`, { [n.id]: "borrar" });
+    slot.set(null);
+    rec("del", ["del_leaf"], `Hoja ${K(k)} eliminada.`);
+  } else if (!n.l || !n.r) {
+    const c = n.l || n.r;
+    rec("del", ["del_found", "del_one", n.l ? "del_onlyl" : "del_onlyr"], `Encontrado ${K(n.k)}. <b>Caso 2: tiene un solo hijo</b> (${K(c.k)}) → el hijo ocupa su lugar.`, { [n.id]: "borrar", [c.id]: "y" });
+    slot.set(c);
+    rec("del", ["del_one", n.l ? "del_onlyl" : "del_onlyr"], `${K(c.k)} sube al lugar de ${K(k)}.`, { [c.id]: "y" });
+  } else {
+    let s = n.r; while (s.l) s = s.l;
+    rec("del", ["del_found", "del_suc"], `Encontrado ${K(n.k)}. <b>Caso 3: tiene dos hijos</b> → buscar el <b>sucesor inorden</b>: el mínimo del subárbol derecho = ${K(s.k)}.`, { [n.id]: "borrar", [s.id]: "suc" });
+    const sk = s.k; n.k = sk;
+    rec("del", ["del_copy"], `Se copia ${K(sk)} en el nodo. Ahora hay dos ${K(sk)}: falta borrar el original en el subárbol derecho.`, { [n.id]: "nuevo", [s.id]: "suc" });
+    rec("del", ["del_rec"], `Llamada recursiva: <b>eliminar_avl(raiz->der, ${fmt(sk)})</b>.`, { [n.id]: "nuevo", [s.id]: "suc" });
+    eliminar(R(n), sk);
+  }
+  const cur = slot.get();
+  if (cur) {
+    rec("del", ["del_bal"], `De vuelta en ${K(cur.k)} → <b>balancear(raiz)</b>.`, { [cur.id]: "actual" });
+    balancear(slot);
+  }
+  STACK.pop();
+}
+
+// ---------- buscar ----------
+function buscar(n, k) {
+  STACK.push(`buscar(${n ? fmt(n.k) : "∅"}, ${fmt(k)})`);
+  if (!n) { rec("bus", ["bus_null"], `Se llegó a un hijo vacío: ${K(k)} <b>no está</b> en el árbol.`); STACK.pop(); return null; }
+  if (k === n.k) { rec("bus", ["bus_eq"], `${K(k)} == ${K(n.k)} → <b>encontrado</b>.`, { [n.id]: "encontrado" }); STACK.pop(); return n; }
+  let res;
+  if (k < n.k) { rec("bus", ["bus_lt"], `${K(k)} &lt; ${K(n.k)} → seguir por la izquierda.`, { [n.id]: "actual" }); res = buscar(n.l, k); }
+  else { rec("bus", ["bus_gt"], `${K(k)} &gt; ${K(n.k)} → seguir por la derecha.`, { [n.id]: "actual" }); res = buscar(n.r, k); }
+  STACK.pop(); return res;
+}
+
+// ---------- inorden ----------
+function inorden(n, out, vis) {
+  if (!n) return;
+  STACK.push(`inorden(${fmt(n.k)})`);
+  inorden(n.l, out, vis);
+  out.push(n.k); vis[n.id] = "visitado";
+  const hl = { ...vis, [n.id]: "actual" };
+  rec("ino", ["in_v"], `Ya se recorrió todo el subárbol izquierdo de ${K(n.k)} → <b>visitar ${K(n.k)}</b>. Luego se recorre su subárbol derecho.`, hl, { out: out.slice() });
+  inorden(n.r, out, vis);
+  STACK.pop();
+}
+
+// ---------- verificación (verificar_avl) ----------
+function verificar(n, lo = -Infinity, hi = Infinity) {
+  if (!n) return { h: 0, ok: true };
+  if (!(n.k > lo && n.k < hi)) return { h: 0, ok: false, why: `orden BST roto en ${fmt(n.k)}` };
+  const a = verificar(n.l, lo, n.k); if (!a.ok) return a;
+  const b = verificar(n.r, n.k, hi); if (!b.ok) return b;
+  if (Math.abs(b.h - a.h) > 1) return { h: 0, ok: false, why: `nodo ${fmt(n.k)} con fb=${sg(b.h - a.h)}` };
+  return { h: 1 + Math.max(a.h, b.h), ok: true };
+}
+const count = n => n ? 1 + count(n.l) + count(n.r) : 0;
+const realH = n => n ? 1 + Math.max(realH(n.l), realH(n.r)) : 0;
+
+// ---------- ejecutar una operación ----------
+function runOp(op) {
+  STEPS = []; STACK = []; OPROT = 0; NOTFOUND = false; OPT = op.t;
+  const h0 = H(T.root);
+  if (op.t === "ins") {
+    rec("ins", [], `<b>Insertar ${K(op.k)}</b>: se empieza en la raíz, igual que en un BST.`, T.root ? { [T.root.id]: "actual" } : {});
+    insertar(rootSlot, op.k);
+    rec("ins", [], `Inserción de ${K(op.k)} terminada. Rotaciones simples en esta operación: <b>${OPROT}</b>. Altura del árbol: ${h0} → <b>${H(T.root)}</b>.`);
+  } else if (op.t === "del") {
+    rec("del", [], `<b>Eliminar ${K(op.k)}</b>: primero se busca la clave.`, T.root ? { [T.root.id]: "actual" } : {});
+    eliminar(rootSlot, op.k);
+    rec("del", [], NOTFOUND ? `No se eliminó nada: ${K(op.k)} no estaba.` : `Eliminación de ${K(op.k)} terminada. Rotaciones simples: <b>${OPROT}</b>. Altura: ${h0} → <b>${H(T.root)}</b>.`);
+  } else if (op.t === "bus") {
+    const r = buscar(T.root, op.k);
+    rec("bus", [], r ? `Búsqueda terminada: ${K(op.k)} encontrado tras ${STEPS.length} comparaciones (como máximo la altura, ${H(T.root)}).` : `Búsqueda terminada: ${K(op.k)} no existe.`, r ? { [r.id]: "encontrado" } : {});
+  } else if (op.t === "ino") {
+    const out = [], vis = {};
+    if (!T.root) rec("ino", [], "El árbol está vacío.");
+    inorden(T.root, out, vis);
+    if (T.root) rec("ino", [], `Recorrido inorden completo: las claves salen <b>ordenadas</b>. Esto es lo que usa <b>listar_ordenado()</b> en SIGA.`, vis, { out: out.slice() });
+  } else if (op.t === "clr") {
+    T.root = null; for (const c in CNT) CNT[c] = 0;
+    rec("ins", [], "Árbol vacío. Inserta una clave o elige un caso de la práctica.");
+  } else if (op.t === "silent") {
+    for (const k of op.ks) T.root = fastIns(T.root, k);
+    rec("ins", [], op.msg);
+  }
+  return STEPS;
+}
+// inserción sin grabar (para precargar), mantiene clases Nodo
+function fastIns(n, k) {
+  if (!n) return new Nodo(k);
+  if (k < n.k) n.l = fastIns(n.l, k); else if (k > n.k) n.r = fastIns(n.r, k); else return n;
+  upd(n); const f = FB(n);
+  const rr = z => { const y = z.r; z.r = y.l; upd(z); y.l = z; upd(y); return y; };
+  const rl = z => { const y = z.l; z.l = y.r; upd(z); y.r = z; upd(y); return y; };
+  if (f < -1) { if (FB(n.l) > 0) n.l = rr(n.l); return rl(n); }
+  if (f > 1) { if (FB(n.r) < 0) n.r = rl(n.r); return rr(n); }
+  return n;
+}
+
+// =====================================================================
+//  Código mostrado (ids de línea ↔ pasos)
+// =====================================================================
+const CODE = {
+  cpp: {
+    ins: { name: "insertar_avl  (avl.h)", lines: [
+      ["", "void insertar_avl(unique_ptr<Nodo>& raiz, K clave, V valor) {"],
+      ["ins_null", "    if (!raiz) {"],
+      ["ins_new", "        raiz = make_unique<Nodo>(clave, valor);"],
+      ["ins_new", "        return;"],
+      ["", "    }"],
+      ["ins_lt", "    if (clave < raiz->clave)"],
+      ["ins_goleft", "        insertar_avl(raiz->izq, clave, valor);"],
+      ["ins_gt", "    else if (raiz->clave < clave)"],
+      ["ins_goright", "        insertar_avl(raiz->der, clave, valor);"],
+      ["ins_dup", "    else { raiz->valor = valor; return; }  // repetida"],
+      ["ins_bal", "    balancear(raiz);            // reequilibrar al volver"],
+      ["", "}"]]},
+    bal: { name: "balancear  (avl.h)", lines: [
+      ["", "void balancear(unique_ptr<Nodo>& n) {"],
+      ["bal_h", "    actualizar_altura(n);"],
+      ["bal_fb", "    int fb = factor_balance(n);   // h(der) - h(izq)"],
+      ["bal_left", "    if (fb < -1) {                // pesado a la izquierda"],
+      ["bal_lr", "        if (factor_balance(n->izq) > 0)    // caso LR"],
+      ["bal_lr_rot", "            rotar_izquierda(n->izq);"],
+      ["bal_ll_rot", "        rotar_derecha(n);             // caso LL"],
+      ["bal_right", "    } else if (fb > 1) {          // pesado a la derecha"],
+      ["bal_rl", "        if (factor_balance(n->der) < 0)    // caso RL"],
+      ["bal_rl_rot", "            rotar_derecha(n->der);"],
+      ["bal_rr_rot", "        rotar_izquierda(n);           // caso RR"],
+      ["bal_ok", "    }                             // |fb| <= 1: nada"],
+      ["", "}"]]},
+    rd: { name: "rotar_derecha  (avl.h)", lines: [
+      ["", "void rotar_derecha(unique_ptr<Nodo>& z) {"],
+      ["rd1", "    auto y = std::move(z->izq);    // y = hijo izquierdo"],
+      ["rd2", "    z->izq = std::move(y->der);    // T pasa a z"],
+      ["rd3", "    actualizar_altura(z);          // z bajó: primero"],
+      ["rd4", "    y->der = std::move(z);         // z cuelga de y"],
+      ["rd5", "    actualizar_altura(y);"],
+      ["rd6", "    z = std::move(y);              // y es la nueva raíz"],
+      ["", "}"]]},
+    ri: { name: "rotar_izquierda  (avl.h)", lines: [
+      ["", "void rotar_izquierda(unique_ptr<Nodo>& z) {"],
+      ["ri1", "    auto y = std::move(z->der);    // y = hijo derecho"],
+      ["ri2", "    z->der = std::move(y->izq);    // T pasa a z"],
+      ["ri3", "    actualizar_altura(z);"],
+      ["ri4", "    y->izq = std::move(z);         // z cuelga de y"],
+      ["ri5", "    actualizar_altura(y);"],
+      ["ri6", "    z = std::move(y);              // y es la nueva raíz"],
+      ["", "}"]]},
+    del: { name: "eliminar_avl  (avl.h)", lines: [
+      ["", "void eliminar_avl(unique_ptr<Nodo>& raiz, const K& clave) {"],
+      ["del_null", "    if (!raiz) return;"],
+      ["del_lt", "    if (clave < raiz->clave) eliminar_avl(raiz->izq, clave);"],
+      ["del_gt", "    else if (clave > raiz->clave) eliminar_avl(raiz->der, clave);"],
+      ["del_found", "    else {"],
+      ["del_leaf", "        if (!raiz->izq && !raiz->der) raiz = nullptr;   // caso 1"],
+      ["del_one", "        else if (!raiz->izq || !raiz->der)              // caso 2"],
+      ["del_one", "            raiz = std::move(raiz->izq ? raiz->izq : raiz->der);"],
+      ["", "        else {                                          // caso 3"],
+      ["del_suc", "            Nodo* suc = minimo(raiz->der);"],
+      ["del_copy", "            raiz->clave = suc->clave; raiz->valor = suc->valor;"],
+      ["del_rec", "            eliminar_avl(raiz->der, raiz->clave);"],
+      ["", "        }"],
+      ["", "    }"],
+      ["del_bal", "    if (raiz) balancear(raiz);    // reequilibrar"],
+      ["", "}"]]},
+    bus: { name: "buscar  (avl.h)", lines: [
+      ["", "Nodo* buscar(const unique_ptr<Nodo>& raiz, const K& clave) {"],
+      ["bus_null", "    if (!raiz) return nullptr;"],
+      ["bus_eq", "    if (clave == raiz->clave) return raiz.get();"],
+      ["bus_lt", "    if (clave < raiz->clave) return buscar(raiz->izq, clave);"],
+      ["bus_gt", "    return buscar(raiz->der, clave);"],
+      ["", "}"]]},
+    ino: { name: "inorden  (avl.h)", lines: [
+      ["", "template<typename F>"],
+      ["", "void inorden(const unique_ptr<Nodo>& n, F visitar) {"],
+      ["", "    if (!n) return;"],
+      ["in_l", "    inorden(n->izq, visitar);"],
+      ["in_v", "    visitar(*n);                  // imprime la clave"],
+      ["in_r", "    inorden(n->der, visitar);"],
+      ["", "}"]]},
+  },
+  py: {
+    ins: { name: "insertar_avl  (avl_python.py)", lines: [
+      ["", "def insertar_avl(raiz, clave, valor=None):"],
+      ["ins_null", "    if raiz is None:"],
+      ["ins_new", "        return Nodo(clave, valor)"],
+      ["ins_lt", "    if clave < raiz.clave:"],
+      ["ins_goleft", "        raiz.izq = insertar_avl(raiz.izq, clave, valor)"],
+      ["ins_gt", "    elif clave > raiz.clave:"],
+      ["ins_goright", "        raiz.der = insertar_avl(raiz.der, clave, valor)"],
+      ["ins_dup", "    else:"],
+      ["ins_dup", "        raiz.valor = valor"],
+      ["ins_dup", "        return raiz"],
+      ["ins_bal", "    return balancear(raiz)"]]},
+    bal: { name: "balancear  (avl_python.py)", lines: [
+      ["", "def balancear(n):"],
+      ["bal_h", "    actualizar_altura(n)"],
+      ["bal_fb", "    f = fb(n)                      # h(der) - h(izq)"],
+      ["bal_left", "    if f < -1:                     # pesado a la izquierda"],
+      ["bal_lr", "        if fb(n.izq) > 0:          # LR"],
+      ["bal_lr_rot", "            n.izq = rotar_izq(n.izq)"],
+      ["bal_ll_rot", "        return rotar_der(n)        # LL"],
+      ["bal_right", "    if f > 1:                      # pesado a la derecha"],
+      ["bal_rl", "        if fb(n.der) < 0:          # RL"],
+      ["bal_rl_rot", "            n.der = rotar_der(n.der)"],
+      ["bal_rr_rot", "        return rotar_izq(n)        # RR"],
+      ["bal_ok", "    return n"]]},
+    rd: { name: "rotar_der  (avl_python.py)", lines: [
+      ["", "def rotar_der(z):"],
+      ["rd1", "    y = z.izq"],
+      ["rd2", "    z.izq = y.der                 # T pasa a z"],
+      ["rd4", "    y.der = z"],
+      ["rd3", "    actualizar_altura(z)          # z bajó: primero"],
+      ["rd5", "    actualizar_altura(y)"],
+      ["rd6", "    return y                      # nueva raíz"]]},
+    ri: { name: "rotar_izq  (avl_python.py)", lines: [
+      ["", "def rotar_izq(z):"],
+      ["ri1", "    y = z.der"],
+      ["ri2", "    z.der = y.izq                 # T pasa a z"],
+      ["ri4", "    y.izq = z"],
+      ["ri3", "    actualizar_altura(z)"],
+      ["ri5", "    actualizar_altura(y)"],
+      ["ri6", "    return y                      # nueva raíz"]]},
+    del: { name: "eliminar_avl  (avl_python.py)", lines: [
+      ["", "def eliminar_avl(raiz, clave):"],
+      ["del_null", "    if raiz is None:"],
+      ["del_null", "        return None"],
+      ["del_lt", "    if clave < raiz.clave:"],
+      ["del_lt", "        raiz.izq = eliminar_avl(raiz.izq, clave)"],
+      ["del_gt", "    elif clave > raiz.clave:"],
+      ["del_gt", "        raiz.der = eliminar_avl(raiz.der, clave)"],
+      ["del_found", "    else:"],
+      ["del_leaf del_onlyr", "        if raiz.izq is None:      # hoja o solo hijo der."],
+      ["del_leaf del_onlyr", "            return raiz.der"],
+      ["del_onlyl", "        if raiz.der is None:      # solo hijo izquierdo"],
+      ["del_onlyl", "            return raiz.izq"],
+      ["del_suc", "        suc = minimo(raiz.der)    # dos hijos"],
+      ["del_copy", "        raiz.clave, raiz.valor = suc.clave, suc.valor"],
+      ["del_rec", "        raiz.der = eliminar_avl(raiz.der, suc.clave)"],
+      ["del_bal", "    return balancear(raiz)"]]},
+    bus: { name: "buscar  (avl_python.py)", lines: [
+      ["", "def buscar(raiz, clave):"],
+      ["bus_lt bus_gt", "    while raiz is not None:"],
+      ["bus_eq", "        if clave == raiz.clave:"],
+      ["bus_eq", "            return raiz"],
+      ["bus_lt bus_gt", "        raiz = raiz.izq if clave < raiz.clave else raiz.der"],
+      ["bus_null", "    return None"]]},
+    ino: { name: "inorden  (equivalente recursivo)", lines: [
+      ["", "def inorden(n, salida):"],
+      ["", "    if n is None:"],
+      ["", "        return"],
+      ["in_l", "    inorden(n.izq, salida)"],
+      ["in_v", "    salida.append(n.clave)        # visitar"],
+      ["in_r", "    inorden(n.der, salida)"]]},
+  }
+};
+
+// =====================================================================
+//  Dibujo del árbol (layout inorden + animación)
+// =====================================================================
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (t, a = {}) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+function layout(root, DX, DY) {
+  const nodes = new Map(), edges = []; let i = 0, maxD = 0, auto = 0;
+  (function walk(n, d, parent) {
+    if (!n) return;
+    const id = n.id ?? ("a" + (++auto)); n._lid = id;
+    walk(n.l, d + 1, n);
+    nodes.set(id, { x: i * DX, y: d * DY, k: n.k, h: n.h ?? 0, fb: H(n.r) - H(n.l), d });
+    i++; maxD = Math.max(maxD, d);
+    walk(n.r, d + 1, n);
+  })(root, 0, null);
+  const E = [];
+  (function walk2(n) { if (!n) return; for (const c of [n.l, n.r]) if (c) { E.push([n._lid, c._lid]); walk2(c); } })(root);
+  return { nodes, edges: E, w: Math.max(0, i - 1) * DX, h: maxD * DY, count: i };
+}
+
+const svg = document.getElementById("svg");
+const gEdges = document.getElementById("edges"), gNodes = document.getElementById("nodes");
+const emptyMsg = document.getElementById("emptymsg");
+const els = new Map(); const view = { pos: new Map(), vb: { x: -200, y: -50, w: 400, h: 300 } };
+let animId = 0, edgeObjs = [];
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+function makeNode() {
+  const g = svgEl("g", { class: "nd" });
+  g.append(svgEl("circle", { r: 19 }));
+  const k = svgEl("text", { class: "k" }); g.append(k);
+  const hh = svgEl("text", { class: "hh", y: 33 }); g.append(hh);
+  const fb = svgEl("g", { class: "fbb", transform: "translate(21,-18)" });
+  fb.append(svgEl("rect", { x: -12, y: -8, width: 24, height: 16, rx: 8 }));
+  fb.append(svgEl("text", {})); g.append(fb);
+  const tag = svgEl("text", { class: "tag", y: -27 }); g.append(tag);
+  return g;
+}
+const TAGS = { actual: "", nuevo: "nuevo", encontrado: "✓", z: "z", y: "y", t: "T", suc: "sucesor", borrar: "borrar", visitado: "" };
+
+function renderTree(snap, hl) {
+  const DX = 54, DY = 74;
+  const Lt = layout(snap, DX, DY);
+  const cw = svg.clientWidth || 700, ch = svg.clientHeight || 440;
+  const padX = 50, padTop = 46, padBot = 50;
+  const cwid = Lt.w + 2 * padX, chei = Lt.h + padTop + padBot;
+  const w = Math.max(cwid, cw), h = Math.max(chei, ch, w * ch / cw);
+  const vb = { x: Lt.w / 2 - w / 2, y: -padTop, w, h };
+  emptyMsg.style.display = snap ? "none" : "";
+  emptyMsg.setAttribute("x", vb.x + vb.w / 2); emptyMsg.setAttribute("y", vb.y + vb.h / 2);
+
+  // eliminar nodos que ya terminaron de desaparecer
+  for (const [id, el] of els) if (!Lt.nodes.has(id) && (view.pos.get(id)?.o ?? 0) < 0.05) { el.remove(); els.delete(id); view.pos.delete(id); }
+  const from = new Map();
+  for (const [id, nd] of Lt.nodes) {
+    let el = els.get(id);
+    if (!el) { el = makeNode(); els.set(id, el); gNodes.append(el); view.pos.set(id, { x: nd.x, y: nd.y - 34, o: 0 }); }
+    from.set(id, { ...view.pos.get(id) });
+    const role = hl[id] || "";
+    const afb = Math.abs(nd.fb);
+    el.setAttribute("class", "nd" + (role ? " r-" + role : "") + (afb >= 2 ? " fb2" : afb === 1 ? " fb1" : ""));
+    el.querySelector(".k").textContent = fmt(nd.k);
+    el.querySelector(".hh").textContent = "h=" + nd.h;
+    el.querySelector(".fbb text").textContent = sg(nd.fb);
+    el.querySelector(".tag").textContent = TAGS[role] ?? "";
+    gNodes.append(el); // orden: los resaltados quedan arriba
+  }
+  for (const id of els.keys()) if (!Lt.nodes.has(id)) from.set(id, { ...view.pos.get(id) });
+
+  gEdges.innerHTML = "";
+  edgeObjs = Lt.edges.map(([p, c]) => { const ln = svgEl("line", { class: "edge" }); gEdges.append(ln); return { ln, p, c }; });
+
+  const fromVB = { ...view.vb };
+  const D = reduce ? 0 : animDur();
+  const t0 = performance.now(); const my = ++animId;
+  const frame = now => {
+    if (my !== animId) return;
+    const u = D ? Math.min(1, (now - t0) / D) : 1, e = ease(u);
+    for (const [id, el] of els) {
+      const a = from.get(id) || view.pos.get(id) || { x: 0, y: 0, o: 1 };
+      const b = Lt.nodes.get(id);
+      const p = b ? { x: lerp(a.x, b.x, e), y: lerp(a.y, b.y, e), o: lerp(a.o, 1, e) } : { x: a.x, y: a.y + 10 * e, o: lerp(a.o, 0, e) };
+      view.pos.set(id, p);
+      el.setAttribute("transform", `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
+      el.style.opacity = p.o.toFixed(3);
+    }
+    for (const E of edgeObjs) {
+      const a = view.pos.get(E.p), b = view.pos.get(E.c); if (!a || !b) continue;
+      E.ln.setAttribute("x1", a.x); E.ln.setAttribute("y1", a.y); E.ln.setAttribute("x2", b.x); E.ln.setAttribute("y2", b.y);
+      E.ln.style.opacity = Math.min(a.o, b.o) * .75;
+    }
+    view.vb = { x: lerp(fromVB.x, vb.x, e), y: lerp(fromVB.y, vb.y, e), w: lerp(fromVB.w, vb.w, e), h: lerp(fromVB.h, vb.h, e) };
+    svg.setAttribute("viewBox", `${view.vb.x} ${view.vb.y} ${view.vb.w} ${view.vb.h}`);
+    if (u < 1) requestAnimationFrame(frame);
+    else for (const [id, el] of els) if (!Lt.nodes.has(id)) { el.remove(); els.delete(id); view.pos.delete(id); }
+  };
+  requestAnimationFrame(frame);
+}
+
+// =====================================================================
+//  Reproductor
+// =====================================================================
+const P = { op: null, steps: [], i: 0, playing: true, timer: null, queue: [], lang: "cpp" };
+const SPEED = [0, 2000, 1300, 850, 500, 230];
+const delay = () => SPEED[+document.getElementById("speed").value];
+const animDur = () => Math.min(620, delay() * 0.6);
+const $ = id => document.getElementById(id);
+
+function opLabel(op) {
+  return { ins: `insertar_avl(${fmt(op.k)})`, del: `eliminar_avl(${fmt(op.k)})`, bus: `buscar(${fmt(op.k)})`, ino: "inorden()", clr: "vaciar", silent: "árbol de ejemplo" }[op.t];
+}
+function enqueue(ops, reset = false) {
+  if (reset) { P.queue = []; ops = [{ t: "clr" }, ...ops]; }
+  P.queue.push(...ops);
+  if (!P.op || P.i >= P.steps.length - 1) { nextOp(); }
+  else updateQueue();
+  if (!P.playing) setPlaying(true);
+}
+function nextOp() {
+  const op = P.queue.shift();
+  if (!op) { updateQueue(); return false; }
+  P.op = op; P.steps = runOp(op); P.i = 0;
+  // "clr" no necesita detenerse: pasa directo
+  show(); schedule(); return true;
+}
+function schedule() {
+  clearTimeout(P.timer);
+  if (!P.playing) return;
+  P.timer = setTimeout(() => {
+    if (P.i < P.steps.length - 1) { P.i++; show(); schedule(); }
+    else if (P.queue.length) nextOp();
+    else setPlaying(false);
+  }, P.op?.t === "clr" ? 60 : delay());
+}
+function setPlaying(v) {
+  P.playing = v;
+  $("p-play").textContent = v ? "❚❚ Pausa" : "▶ Reproducir";
+  if (v) {
+    if (P.i >= P.steps.length - 1 && !P.queue.length) { P.playing = false; $("p-play").textContent = "▶ Reproducir"; return; }
+    schedule();
+  } else clearTimeout(P.timer);
+}
+function finishAll() {
+  clearTimeout(P.timer);
+  while (P.queue.length) { const op = P.queue.shift(); P.op = op; P.steps = runOp(op); }
+  P.i = P.steps.length - 1; setPlaying(false); show();
+}
+
+function show() {
+  const s = P.steps[P.i]; if (!s) return;
+  renderTree(s.snap, s.hl || {});
+  $("msg").innerHTML = s.msg;
+  $("opname").textContent = opLabel(P.op);
+  $("count").textContent = `${P.i + 1} / ${P.steps.length}`;
+  // validez
+  const v = verificar(s.snap);
+  const st = $("valid");
+  st.className = "status " + (v.ok ? "ok" : "bad");
+  st.textContent = v.ok ? "AVL válido" : "Desbalanceado: " + v.why;
+  renderCode(s);
+  // pila
+  const ol = $("stack"); ol.innerHTML = "";
+  if (!s.stack.length) ol.innerHTML = `<div class="none">— sin llamadas activas —</div>`;
+  for (const f of s.stack) { const li = document.createElement("li"); li.textContent = f; ol.append(li); }
+  // stats
+  const n = count(s.snap), h = realH(s.snap);
+  const hmin = n ? Math.ceil(Math.log2(n + 1)) : 0, teo = n ? Math.floor(1.44 * Math.log2(n + 1)) : 0;
+  $("stats").innerHTML =
+    stat(n, "nodos") + stat(h, "altura actual") + stat(`${hmin}–${teo}`, "mín. posible – máx. teórica");
+  const c = s.cnt;
+  $("rots").innerHTML = `<span>LL: ${c.LL}</span><span>RR: ${c.RR}</span><span>LR: ${c.LR}</span><span>RL: ${c.RL}</span><span>rotaciones simples: ${c.simples}</span>`;
+  $("inord").innerHTML = s.out ? `inorden: <b>${s.out.map(fmt).join("  ")}</b>` : (s.snap ? "inorden: " + inordList(s.snap).map(fmt).join("  ") : "inorden: —");
+  // log
+  const log = $("log"); log.innerHTML = "";
+  P.steps.forEach((st2, j) => {
+    const b = document.createElement("button");
+    b.className = j === P.i ? "cur" : "";
+    const tmp = document.createElement("div"); tmp.innerHTML = st2.msg;
+    b.innerHTML = `<span class="n">${j + 1}</span>`; b.append(document.createTextNode(tmp.textContent));
+    b.onclick = () => { setPlaying(false); P.i = j; show(); };
+    log.append(b);
+  });
+  const cur = log.querySelector(".cur"); if (cur) log.scrollTop = cur.offsetTop - log.clientHeight / 2;
+  updateQueue();
+  $("p-prev").disabled = P.i === 0; $("p-first").disabled = P.i === 0;
+  $("p-next").disabled = P.i >= P.steps.length - 1 && !P.queue.length;
+  $("p-end").disabled = P.i >= P.steps.length - 1 && !P.queue.length;
+}
+const stat = (v, d) => `<div class="stat"><div class="v">${v}</div><div class="d">${d}</div></div>`;
+const inordList = n => n ? [...inordList(n.l), n.k, ...inordList(n.r)] : [];
+function updateQueue() {
+  $("queue").textContent = P.queue.length ? "En cola: " + P.queue.filter(o => o.t !== "clr").map(opLabel).join(" → ") : "";
+}
+
+function renderCode(s) {
+  const fn = s.fn || "ins";
+  const def = CODE[P.lang][fn];
+  $("fname").textContent = def.name;
+  const want = new Set(s.lines);
+  const kw = P.lang === "cpp"
+    ? /\b(void|if|else|return|auto|const|int|template|typename|nullptr)\b/g
+    : /\b(def|if|elif|else|return|while|is|not|None)\b/g;
+  const esc = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const cmRe = P.lang === "cpp" ? /(\/\/.*)$/ : /(#.*)$/;
+  $("code").innerHTML = def.lines.map(([ids, txt]) => {
+    const hit = ids && ids.split(" ").some(x => want.has(x));
+    let body = txt, cm = "";
+    const m = body.match(cmRe); if (m) { cm = m[1]; body = body.slice(0, m.index); }
+    const html = esc(body).replace(kw, '<span class="kw">$1</span>') + (cm ? `<span class="cm">${esc(cm)}</span>` : "");
+    return `<span class="ln${hit ? " hl" : ""}">${html}</span>`;
+  }).join("");
+}
+
+// ---------- controles ----------
+function parseKeys(txt) {
+  return txt.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean).map(Number).filter(x => Number.isFinite(x) && Number.isInteger(x));
+}
+function act(t) {
+  const inp = $("key"); const ks = parseKeys(inp.value);
+  if (t === "ino") { enqueue([{ t: "ino" }]); return; }
+  if (!ks.length) { $("msg").innerHTML = "Escribe una clave entera, por ejemplo <span class='k'>25</span>, o varias separadas por comas."; inp.focus(); return; }
+  enqueue(ks.map(k => ({ t, k })));
+  inp.select();
+}
+$("b-ins").onclick = () => act("ins");
+$("b-del").onclick = () => act("del");
+$("b-bus").onclick = () => act("bus");
+$("b-ino").onclick = () => act("ino");
+$("b-clr").onclick = () => { P.queue = []; enqueue([{ t: "clr" }]); };
+$("key").addEventListener("keydown", e => { if (e.key === "Enter") act("ins"); });
+
+$("p-play").onclick = () => {
+  if (!P.playing && P.i >= P.steps.length - 1 && P.queue.length) { setPlaying(true); nextOp(); return; }
+  setPlaying(!P.playing);
+};
+$("p-next").onclick = () => { setPlaying(false); if (P.i < P.steps.length - 1) { P.i++; show(); } else if (P.queue.length) { nextOp(); setPlaying(false); } };
+$("p-prev").onclick = () => { setPlaying(false); if (P.i > 0) { P.i--; show(); } };
+$("p-first").onclick = () => { setPlaying(false); P.i = 0; show(); };
+$("p-end").onclick = finishAll;
+$("speed").oninput = () => { if (P.playing) schedule(); };
+for (const l of ["cpp", "py"]) $("lang-" + l).onclick = () => {
+  P.lang = l; $("lang-cpp").setAttribute("aria-pressed", l === "cpp"); $("lang-py").setAttribute("aria-pressed", l === "py");
+  show();
+};
+
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(a, r = Math.random) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const PRESETS = {
+  P1: [10, 20, 30].map(k => ({ t: "ins", k })),
+  P2: [30, 10, 20].map(k => ({ t: "ins", k })),
+  LL: [30, 20, 10].map(k => ({ t: "ins", k })),
+  RL: [10, 30, 20].map(k => ({ t: "ins", k })),
+  P3: range(1, 15).map(k => ({ t: "ins", k })),
+  P4: [...[20, 10, 30].map(k => ({ t: "ins", k })), { t: "del", k: 10 }],
+  P5: [...[20, 10, 30, 25, 35].map(k => ({ t: "ins", k })), { t: "del", k: 20 }],
+  P6: [...range(1, 7).map(k => ({ t: "ins", k })), { t: "del", k: 1 }],
+  SIGA: [...range(1, 10).map(i => ({ t: "ins", k: 2026100000 + i })), { t: "bus", k: 2026100007 }, { t: "ino" }],
+};
+document.querySelectorAll("[data-p]").forEach(b => b.onclick = () => {
+  const p = b.dataset.p;
+  const ops = p === "RND" ? shuffle(range(1, 99)).slice(0, 12).map(k => ({ t: "ins", k })) : PRESETS[p];
+  enqueue(ops, true);
+});
+
+// =====================================================================
+//  BST vs AVL (versiones rápidas, sin grabar)
+// =====================================================================
+function bstIns(root, k) {
+  const nn = { k, h: 1, l: null, r: null }; if (!root) return nn;
+  let c = root;
+  for (;;) { if (k < c.k) { if (!c.l) { c.l = nn; break; } c = c.l; } else if (k > c.k) { if (!c.r) { c.r = nn; break; } c = c.r; } else break; }
+  return root;
+}
+function avlIns(n, k) {
+  if (!n) return { k, h: 1, l: null, r: null };
+  if (k < n.k) n.l = avlIns(n.l, k); else if (k > n.k) n.r = avlIns(n.r, k); else return n;
+  upd(n); const f = FB(n);
+  const rr = z => { const y = z.r; z.r = y.l; upd(z); y.l = z; upd(y); return y; };
+  const rl = z => { const y = z.l; z.l = y.r; upd(z); y.r = z; upd(y); return y; };
+  if (f < -1) { if (FB(n.l) > 0) n.l = rr(n.l); return rl(n); }
+  if (f > 1) { if (FB(n.r) < 0) n.r = rl(n.r); return rr(n); }
+  return n;
+}
+function hIter(root) { if (!root) return 0; let lvl = [root], h = 0; while (lvl.length) { h++; const nx = []; for (const n of lvl) { if (n.l) nx.push(n.l); if (n.r) nx.push(n.r); } lvl = nx; } return h; }
+function fixH(n) { if (!n) return 0; n.h = 1 + Math.max(fixH(n.l), fixH(n.r)); return n.h; }
+
+function drawStatic(el, root) {
+  el.innerHTML = "";
+  const DX = 34, DY = 46, r = 13;
+  const Lt = layout(root, DX, DY);
+  const pad = 26;
+  const w = Math.max(Lt.w + 2 * pad, 260), h = Math.max(Lt.h + 2 * pad, 200);
+  el.setAttribute("viewBox", `${Lt.w / 2 - w / 2} ${-pad} ${w} ${h}`);
+  el.setAttribute("preserveAspectRatio", "xMidYMin meet");
+  for (const [p, c] of Lt.edges) { const a = Lt.nodes.get(p), b = Lt.nodes.get(c); el.append(svgEl("line", { class: "edge", x1: a.x, y1: a.y, x2: b.x, y2: b.y })); }
+  for (const [, nd] of Lt.nodes) {
+    const g = svgEl("g", { class: "nd", transform: `translate(${nd.x},${nd.y})` });
+    g.append(svgEl("circle", { r }));
+    const t = svgEl("text", { class: "k", style: "font-size:11px" }); t.textContent = fmt(nd.k); g.append(t);
+    el.append(g);
+  }
+}
+function compare() {
+  const ks = parseKeys($("seq").value).slice(0, 63);
+  let b = null, a = null;
+  for (const k of ks) { b = bstIns(b, k); a = avlIns(a, k); }
+  fixH(b);
+  const hb = hIter(b), ha = hIter(a), n = new Set(ks).size;
+  $("c-bst-h").innerHTML = `h = ${hb} <small>· ${n} nodos</small>`;
+  $("c-avl-h").innerHTML = `h = ${ha} <small>· mínima posible ${n ? Math.ceil(Math.log2(n + 1)) : 0}</small>`;
+  drawStatic($("c-bst"), b); drawStatic($("c-avl"), a);
+}
+$("c-go").onclick = compare;
+$("seq").addEventListener("keydown", e => { if (e.key === "Enter") compare(); });
+document.querySelectorAll("[data-s]").forEach(btn => btn.onclick = () => {
+  const s = btn.dataset.s; let arr;
+  if (s === "ord") arr = range(1, 15); else if (s === "ord31") arr = range(1, 31);
+  else if (s === "rnd") arr = shuffle(range(1, 60)).slice(0, 20);
+  else if (s === "desc") arr = range(1, 15).reverse();
+  else { arr = []; let i = 1, j = 15; while (i <= j) { arr.push(i++); if (i <= j) arr.push(j--); } }
+  $("seq").value = arr.join(", "); compare();
+});
+
+// =====================================================================
+//  Experimento 2B
+// =====================================================================
+const NS_EXP = [100, 500, 1000, 5000, 10000];
+let SEED = 2026;
+function experiment() {
+  const r = rng(SEED); const rows = [];
+  for (const n of NS_EXP) {
+    const ord = range(1, n), rnd = shuffle(range(1, n), r);
+    const run = keys => {
+      let t0 = performance.now(), b = null; for (const k of keys) b = bstIns(b, k); const tb = performance.now() - t0;
+      t0 = performance.now(); let a = null; for (const k of keys) a = avlIns(a, k); const ta = performance.now() - t0;
+      return { hb: hIter(b), ha: a.h, tb, ta };
+    };
+    const o = run(ord), x = run(rnd);
+    rows.push({ n, bo: o.hb, ao: o.ha, teo: Math.floor(1.44 * Math.log2(n + 1)), br: x.hb, ar: x.ha, tbo: o.tb, tao: o.ta, tbr: x.tb, tar: x.ta, hmin: Math.ceil(Math.log2(n + 1)) });
+  }
+  return rows;
+}
+function runExperiment() {
+  $("e-info").textContent = "Calculando…";
+  setTimeout(() => {
+    const rows = experiment();
+    $("e-tab").innerHTML = `<thead><tr><th>n</th><th>BST ord</th><th>AVL ord</th><th>Teórico</th><th>BST rnd</th><th>AVL rnd</th><th>h mín.</th></tr></thead><tbody>` +
+      rows.map(r => `<tr><td>${r.n.toLocaleString("es-PE")}</td><td class="bad">${r.bo.toLocaleString("es-PE")}</td><td class="good">${r.ao}</td><td>${r.teo}</td><td>${r.br}</td><td class="good">${r.ar}</td><td>${r.hmin}</td></tr>`).join("") +
+      `</tbody>`;
+    const last = rows[rows.length - 1];
+    $("e-note").innerHTML = `Con n = 10 000 el BST ordenado tiene <b>h = n = ${last.bo.toLocaleString("es-PE")}</b> (una lista). El AVL ordenado tiene h = ${last.ao}, que es la altura mínima posible (${last.hmin}), y el aleatorio h = ${last.ar}; ambos por debajo del límite ${last.teo}. Tiempos de inserción en este navegador para n = 10 000: BST ordenado ${last.tbo.toFixed(0)} ms, AVL ordenado ${last.tao.toFixed(0)} ms.`;
+    $("e-info").textContent = `semilla ${SEED}`;
+    drawChart(rows);
+  }, 30);
+}
+function drawChart(rows) {
+  const el = $("e-chart"); el.innerHTML = "";
+  const W = 640, Hh = 400, m = { l: 58, r: 34, t: 14, b: 46 };
+  const lx = v => m.l + (Math.log10(v) - 2) / 2 * (W - m.l - m.r);
+  const ly = v => Hh - m.b - (Math.log10(v)) / 4 * (Hh - m.t - m.b);
+  for (const v of [1, 10, 100, 1000, 10000]) {
+    el.append(svgEl("line", { class: "ax", x1: m.l, x2: W - m.r, y1: ly(v), y2: ly(v) }));
+    const t = svgEl("text", { class: "axl", x: m.l - 8, y: ly(v) + 4, "text-anchor": "end" }); t.textContent = v.toLocaleString("es-PE"); el.append(t);
+  }
+  for (const v of [100, 1000, 10000]) {
+    el.append(svgEl("line", { class: "ax", y1: m.t, y2: Hh - m.b, x1: lx(v), x2: lx(v) }));
+    const t = svgEl("text", { class: "axl", x: lx(v), y: Hh - m.b + 18, "text-anchor": "middle" }); t.textContent = v.toLocaleString("es-PE"); el.append(t);
+  }
+  const xt = svgEl("text", { class: "axt", x: (m.l + W - m.r) / 2, y: Hh - 8, "text-anchor": "middle" }); xt.textContent = "n (número de claves)"; el.append(xt);
+  const yt = svgEl("text", { class: "axt", x: 14, y: (m.t + Hh - m.b) / 2, "text-anchor": "middle", transform: `rotate(-90 14 ${(m.t + Hh - m.b) / 2})` }); yt.textContent = "altura"; el.append(yt);
+  const series = [
+    { k: "bo", c: "var(--warn)", n: "BST ordenado" },
+    { k: "br", c: "var(--amber)", n: "BST aleatorio" },
+    { k: "teo", c: "var(--muted)", n: "Límite 1.44·log₂(n+1)", dash: "5 4" },
+    { k: "ar", c: "var(--violet)", n: "AVL aleatorio" },
+    { k: "ao", c: "var(--accent)", n: "AVL ordenado" },
+  ];
+  series.forEach((s, si) => {
+    const pts = rows.map(r => `${lx(r.n)},${ly(r[s.k])}`).join(" ");
+    el.append(svgEl("polyline", { points: pts, fill: "none", stroke: s.c, "stroke-width": 2.2, "stroke-dasharray": s.dash || "" }));
+    if (!s.dash) rows.forEach(r => el.append(svgEl("circle", { cx: lx(r.n), cy: ly(r[s.k]), r: 3.4, fill: s.c })));
+    const lgx = m.l + 12, lgy = m.t + 10 + si * 18;
+    el.append(svgEl("line", { x1: lgx, x2: lgx + 20, y1: lgy, y2: lgy, stroke: s.c, "stroke-width": 2.4, "stroke-dasharray": s.dash || "" }));
+    const t = svgEl("text", { class: "axl", x: lgx + 26, y: lgy + 4 }); t.textContent = s.n; el.append(t);
+  });
+}
+$("e-go").onclick = () => { SEED = Math.floor(Math.random() * 1e6); runExperiment(); };
+
+// =====================================================================
+//  Pestañas
+// =====================================================================
+let expDone = false, cmpDone = false;
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav.tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  for (const v of ["lab", "cmp", "exp"]) $("v-" + v).hidden = v !== b.dataset.v;
+  if (b.dataset.v === "cmp" && !cmpDone) { cmpDone = true; compare(); }
+  if (b.dataset.v === "exp" && !expDone) { expDone = true; runExperiment(); }
+  if (b.dataset.v === "lab") show();
+});
+
+// =====================================================================
+//  Inicio: árbol de ejemplo + una inserción que provoca rotación RL
+// =====================================================================
+P.playing = false;
+P.op = { t: "silent" };
+P.steps = runOp({ t: "silent", ks: [40, 20, 60, 10, 30, 50, 70], msg: "Árbol de ejemplo con 7 claves. Pulsa <b>Insertar</b> (ya están escritos 65 y 68): el 68 desbalancea al 70 y provoca un caso <b>LR</b>, o elige un caso de la práctica. Usa ◀ ▶ para avanzar paso a paso." });
+P.i = 0;
+$("key").value = "65, 68";
+setPlaying(false);
+show();
+</script>
+</body>
+</html>
