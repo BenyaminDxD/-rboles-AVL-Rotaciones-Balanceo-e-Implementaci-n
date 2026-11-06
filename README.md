@@ -87,8 +87,7 @@ Altura del árbol al insertar *n* claves (semilla `2026`):
 | 10 000 |       10 000 |           14 |                    19 |            29 |            16 |
 
 Con claves ordenadas, el BST degenera en una lista (*h = n*). El AVL se mantiene en altura
-logarítmica y, con *n* = 10 000, alcanza la altura mínima posible (14). Las respuestas completas
-están en [RESPUESTAS.md](RESPUESTAS.md).
+logarítmica y, con *n* = 10 000, alcanza la altura mínima posible (14). 
 
 ## Notas de implementación
 
